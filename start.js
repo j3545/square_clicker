@@ -2,8 +2,8 @@ let canvas = document.querySelector('canvas');
 let ctx = canvas.getContext('2d');
 let volume = document.querySelector("#volume-control");
 
-let balloons = [];
-let balloon_max = 3;
+let balls = [];
+let balls_max = 3;
 
 let particles = [];
 
@@ -11,6 +11,8 @@ let mouse = {
     x:0,
     y:0
 }
+
+let auto_clicker = true;
 
 
 let music = new Audio("music.mp3")
@@ -30,7 +32,7 @@ let accumulator = 0;
 
 
 
-let BALLOON_SIZE = 100;
+let ball_SIZE = 50;
 let START_POS_Y = -300;
 
 //colors
@@ -57,32 +59,32 @@ function render(){
     
 
     //draw player score
-    ctx.font = "20px Verdana";
+    ctx.font = "15px Verdana";
     ctx.fillStyle="black"
-    ctx.fillText("Score: " + player_score, 50, 50);    
+    ctx.fillText("Score: " + player_score, 5, 50);
     // ctx.fillStyle="black"
-    ctx.fillText("Palette: " + selected_palette_index, 50, 80);
-    //mini palette
-    let i = 0;
-    color_palette[selected_palette_index].forEach(element => {
-        ctx.beginPath();
-        ctx.fillStyle = "#"+ element;
-        ctx.rect(20*i + 50,90,20,20);
-        ctx.fill(); 
-        ctx.strokeStyle="#000"
-        ctx.lineWidth = 1; 
-        ctx.stroke();
-        i++;
-    });
+    // ctx.fillText("Palette: " + selected_palette_index, 5, 80);
+    // //mini palette
+    // let i = 0;
+    // color_palette[selected_palette_index].forEach(element => {
+    //     ctx.beginPath();
+    //     ctx.fillStyle = "#"+ element;
+    //     ctx.rect(20*i + 50,50,20,20);
+    //     ctx.fill(); 
+    //     ctx.strokeStyle="#000"
+    //     ctx.lineWidth = 1; 
+    //     ctx.stroke();
+    //     i++;
+    // });
     
 
-    balloons.forEach(balloon => {
+    balls.forEach(ball => {
         ctx.beginPath();
-        ctx.fillStyle = balloon.color;
-        ctx.rect(balloon.x,balloon.y,balloon.size,balloon.size);
+        ctx.fillStyle = ball.color;
+        ctx.arc(ball.x,ball.y,ball.size, 0, Math.PI*2);
         ctx.fill(); 
         ctx.strokeStyle="#000"
-        ctx.lineWidth = 2; 
+        ctx.lineWidth = 2;
         ctx.stroke();
     });
 
@@ -90,8 +92,8 @@ function render(){
     particles.forEach(particle => {
         ctx.beginPath();
         ctx.fillStyle = particle.color;
-        ctx.rect(particle.x,particle.y,particle.size,particle.size);
-        
+        ctx.arc(particle.x,particle.y,particle.size, 0, Math.PI*2);
+
         ctx.fill(); 
         ctx.strokeStyle="#000"
         ctx.lineWidth = 1; 
@@ -100,10 +102,10 @@ function render(){
 }
 
 function update(dt){
-    balloons.forEach(balloon => {
-        balloon.y += balloon.dy * dt;
-        if(balloon.y > canvas.height){
-            balloons.splice(balloons.indexOf(balloon), 1)
+    balls.forEach(ball => {
+        ball.y += ball.dy * dt;
+        if(ball.y > canvas.height){
+            balls.splice(balls.indexOf(ball), 1)
             
         }
     });
@@ -111,22 +113,28 @@ function update(dt){
     particles.forEach(particle => {
         particle.y += particle.dy * dt;
         particle.x += particle.dx * dt;
-        particle.size-=1;
-        if(particle.size < 3){
+        particle.size -= 0.4;
+        if(particle.size < 1){
             particles.splice(particles.indexOf(particle), 1)
         }
     });
 }
 
+function distance(a,b){
+    var n1 = a.x - b.x;
+    var n2 = a.y - b.y;
+
+    var c = Math.sqrt( n1*n1 + n2*n2 );
+    return c;
+}
+
 function checkCollision(){
     
-    balloons.forEach(balloon => {
-        if(mouse.x > balloon.x &&
-            mouse.x < balloon.x + balloon.size &&
-            mouse.y > balloon.y &&
-            mouse.y < balloon.y + balloon.size){
-                explosion(balloon.x, balloon.y, balloon.color)
-                balloons.splice(balloons.indexOf(balloon), 1)
+    balls.forEach(ball => {
+        
+        if(distance(mouse, ball) < ball.size){
+                explosion(ball.x, ball.y, ball.color)
+                balls.splice(balls.indexOf(ball), 1)
         }
     });
 }
@@ -150,9 +158,10 @@ function explosion(mouseX, mouseY, color){
     let x,y,dx,dy;
     x = mouseX;
     y = mouseY;
+    let explosion_speed = 0.2;
     for(let i = 0; i < 15; i++){
-        dx = (Math.random() < 0.5 ? -1 : 1) * Math.random() * 0.5;
-        dy = (Math.random() < 0.5 ? -1 : 1) * Math.random() * 0.5;
+        dx = (Math.random() < 0.5 ? -explosion_speed : explosion_speed);
+        dy = (Math.random() < 0.5 ? -explosion_speed : explosion_speed);
         particles.push(new Particle(x, y, dx, dy, color));
         
         
@@ -168,7 +177,7 @@ function start(){
     selected_palette = color_palette[Math.floor(Math.random() * color_palette.length)];
     selected_palette_index = Math.floor(Math.random() * color_palette.length)
     setInterval(function(){
-        let x = Math.random() * (canvas.width - BALLOON_SIZE * 2) + BALLOON_SIZE;
+        let x = Math.random() * (canvas.width - ball_SIZE * 2) + ball_SIZE;
         let y = START_POS_Y;
         let type = "normal"
         let dx = 0;
@@ -184,10 +193,10 @@ function start(){
         //random color red green or blue is incremented by a positive or negative each new interval
         
         
-        let balloon = new Balloon(x,y,BALLOON_SIZE,dx,dy,color);
+        let ball = new Ball(x,y,ball_SIZE,dx,dy,color);
         
-        balloons.push(balloon);
-    }, 1100)
+        balls.push(ball);
+    }, 1000)
     resize();
     animate();
 }
@@ -229,6 +238,13 @@ document.addEventListener('mousedown', function(e){
     mouse.x = e.x;
     mouse.y = e.y;
 
+    checkCollision();
+})
+
+document.addEventListener('touchstart',function(e){
+    
+    mouse.x = e.targetTouches[0].clientX;
+    mouse.y = e.targetTouches[0].clientY;
     checkCollision();
 })
 
